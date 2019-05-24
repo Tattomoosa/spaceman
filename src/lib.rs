@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
 extern crate ws;
-extern crate serde;
+// extern crate serde;
 extern crate uuid;
 extern crate crypto;
 extern crate openssl;
 #[macro_use] extern crate log;
+#[macro_use] extern crate serde;
+#[macro_use] extern crate serde_derive;
 
 use uuid::Uuid;
 use crypto::digest::Digest;
@@ -42,55 +44,7 @@ impl<H: MessageHandler> RocketBot<H> {
     }
 
     pub fn run(&mut self) -> Result<(), ws::Error> {
-        /*
-        let domain = format!("ws://{}/websocket", self.domain);
-        info!("Connecting to domain: {}", domain);
-        let connect_request = ConnectRequest::new();
-
-        ws::connect(domain, |out| {
-            let connect = out.send(
-                serde_json::to_string::<ConnectRequest>(&connect_request).unwrap()
-                );
-            if !connect.is_err() {
-                info!("Sent connection request.");
-            }
-            else {
-                error!("Failed to send connection request.");
-            }
-            let login = out.send(
-                serde_json::to_string::<ConnectRequest>(&connect_request).unwrap()
-                );
-            move |msg| {
-                info!("Client recieved message: {}", msg);
-                out.close(ws::CloseCode::Normal)
-            }
-        })
-        */
         self.connect()
-
-            /*
-        match self.connect() {
-            Ok(()) => {
-            },
-            Err(ws_err) => {
-                println!("ERROR");
-                println!("{:?}", ws_err);
-            }
-            _ => {}
-        }
-            */
-        /*
-        println!("Logging in...");
-        match self.login() {
-            Ok(()) => {
-                println!("LOGIN SUCCESS!");
-            },
-            Err(ws_err) => {
-                println!("ERROR");
-                println!("{:?}", ws_err);
-            }
-        }
-        */
     }
 
     fn connect(&mut self) -> Result<(), ws::Error> {
@@ -128,17 +82,15 @@ impl<H: MessageHandler> RocketBot<H> {
                 false => info!("Client sent connect message."),
                 true => error!("CONNECT IS ERROR"),
             }
-            move |msg| {
-                info!("Incoming message: {}", msg);
-                out.close(ws::CloseCode::Normal)
-            }
-            /*
             let login_sent = out.send(serde_json::to_string::<LoginRequest>(&login_request).unwrap());
             match login_sent.is_err() {
                 false=> info!("Client sent login message."),
                 true => error!("LOGIN IS ERROR"),
             }
-            */
+            move |msg| {
+                info!("Incoming message: {}", msg);
+                out.close(ws::CloseCode::Normal)
+            }
         })
     }
 

@@ -1,5 +1,7 @@
-// extern crate serde;
 use uuid::Uuid;
+use serde;
+// #[macro_use]
+// use serde_derive;
 use serde::{
     Serialize,
     Deserialize
@@ -50,6 +52,21 @@ impl ConnectRequest {
     }
 }
 // }}}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ResponseFormat<'a> {
+    pub msg: Option<&'a str>,
+    pub id: Option<&'a str>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct ErrorResponse<'a> {
+    pub error: i32,
+    pub reason: Option<&'a str>,
+    pub message: Option<&'a str>,
+    #[serde(rename = "errorType")]
+    pub error_type: Option<&'a str>
+}
 
 // USER {{{
 #[derive(Serialize, Deserialize, Debug)]
