@@ -6,8 +6,13 @@ extern crate log;
 extern crate simple_logging;
 use log::LevelFilter;
 
-use rocket_bot::{RocketBot, User, MessageHandler};
+use rocket_bot::{
+    RocketBot,
+    User,
+    MessageHandler
+};
 //use env_logger;
+
 
 const DOMAIN: &str = "rocket.cat.pdx.edu/websocket";
 // const DOMAIN: &str = "echo.websocket.org";
@@ -23,7 +28,7 @@ impl MessageHandler for HelloHandler {
 }
 
 
-fn main() {
+fn main() -> Result<(), ()> {
     simple_logging::log_to_stderr(LevelFilter::Info);
     let hello_bot = HelloHandler {};
     let user = User::new(
@@ -35,5 +40,9 @@ fn main() {
         user,
         hello_bot
     );
-    rocket_bot.run();
+    match rocket_bot.run() {
+        _ => {}
+    }
+
+    Ok(())
 }

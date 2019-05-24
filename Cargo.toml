@@ -6,10 +6,11 @@ edition = "2018"
 
 [dependencies]
 rust-crypto = "*"
-ws = "0.8.1"
+ws = { version = "0.8.1", features = ["ssl"] }
 serde = { version = "1.0.91", features = ["derive"] }
 serde_json = "1.0.39"
 serde_derive = "1.0.91"
 uuid = { version = "0.7.4", features = ["serde", "v4"] }
 log = "*"
 simple-logging = "*"
+openssl = "*"
