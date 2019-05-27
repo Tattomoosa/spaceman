@@ -41,6 +41,19 @@ pub struct ConnectRequest {
     pub support: Vec<String>
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Pong {
+    pub msg: String
+}
+
+impl Pong {
+    pub fn new() -> Self {
+        Pong {
+            msg: "pong".to_string(),
+        }
+    }
+}
+
 impl ConnectRequest {
     pub fn new(uuid: &Uuid) -> Self {
         ConnectRequest {
@@ -54,18 +67,24 @@ impl ConnectRequest {
 // }}}
 
 #[derive(Serialize, Deserialize, Debug)]
-struct ResponseFormat<'a> {
-    pub msg: Option<&'a str>,
-    pub id: Option<&'a str>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct ErrorResponse<'a> {
+pub struct ResponseFormat {
+    #[serde(default)]
+    pub msg: Option<String>,
+    #[serde(default)]
+    pub server_id: Option<String>,
+    #[serde(default)]
+    pub session: Option<String>,
+    #[serde(default)]
+    pub collection: Option<String>,
+    #[serde(default)]
     pub error: i32,
-    pub reason: Option<&'a str>,
-    pub message: Option<&'a str>,
+    #[serde(default)]
+    pub reason: Option<String>,
+    #[serde(default)]
+    pub message: Option<String>,
+    #[serde(default)]
     #[serde(rename = "errorType")]
-    pub error_type: Option<&'a str>
+    pub error_type: Option<String>
 }
 
 // USER {{{

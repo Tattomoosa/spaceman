@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(unused_imports)]
 
 extern crate ws;
 // extern crate serde;
@@ -16,7 +17,7 @@ use crypto::sha2::Sha256;
 mod message_formats;
 use message_formats::*;
 pub use message_formats::User;
-// use serde_json;
+use serde_json;
 
 pub trait MessageHandler {
     fn on_message_recieved(self) -> Result<i32, &'static str>;
@@ -34,7 +35,7 @@ impl<H: MessageHandler> RocketBot<H> {
         domain: String,
         user: User,
         message_handler: H
-        ) -> RocketBot<H> {
+    ) -> RocketBot<H> {
         RocketBot {
             domain,
             user,
@@ -87,11 +88,33 @@ impl<H: MessageHandler> RocketBot<H> {
                 false=> info!("Client sent login message."),
                 true => error!("LOGIN IS ERROR"),
             }
-            move |msg| {
+            move |msg: ws::Message| {
                 info!("Incoming message: {}", msg);
-                out.close(ws::CloseCode::Normal)
+                /*
+                let msg2 = msg.into_text().unwrap();
+                let msg_obj : ResponseFormat = serde_json::from_str(&msg2).unwrap();
+                match msg_obj.msg {
+                    Some(m) => {
+                        &out.send(self.handle_message(m));
+                        ()
+                    },
+                    None => (),
+                }
+                */
+                Ok(())
             }
         })
+    }
+
+    fn handle_message(&self, message: String) -> String {
+        match message.as_str() {
+            "ping" => {
+                serde_json::to_string::<Pong>(&Pong::new()).unwrap()
+            },
+            _ => {
+                "".to_string()
+            }
+        }
     }
 
     fn get_hash(string: &mut str) -> String {
