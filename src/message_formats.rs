@@ -18,7 +18,7 @@ pub struct Password {
     pub algorithm: String
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct User {
     pub name: String,
     pub password: String

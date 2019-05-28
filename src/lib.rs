@@ -13,48 +13,68 @@ extern crate openssl;
 use uuid::Uuid;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use ws::{
+    Sender,
+    Message,
+    Handshake,
+    Handler,
+    Error,
+    CloseCode,
+};
 
 mod message_formats;
 use message_formats::*;
 pub use message_formats::User;
-use serde_json;
+// use serde_json;
 
-pub trait MessageHandler {
-    fn on_message_recieved(self) -> Result<i32, &'static str>;
+pub trait RocketMessageHandler {
+    fn on_message(self);
 }
 
-pub struct RocketBot<H: MessageHandler> {
-    domain: String,
+pub struct DefaultRocketHandler {}
+
+impl RocketMessageHandler for DefaultRocketHandler {
+    fn on_message(self) {
+        info!("here");
+    }
+}
+
+pub struct RocketBot {
+    out: Sender,
+    uuid: Uuid,
     user: User,
-    logged_in: bool,
-    message_handler: H,
+    handler: Box<RocketMessageHandler>,
 }
 
-impl<H: MessageHandler> RocketBot<H> {
-    pub fn new(
+impl RocketBot {
+
+    pub fn run(
         domain: String,
-        user: User,
-        message_handler: H
-    ) -> RocketBot<H> {
-        RocketBot {
-            domain,
-            user,
-            logged_in: false,
-            message_handler,
-        }
-    }
-
-    pub fn run(&mut self) -> Result<(), ws::Error> {
-        self.connect()
-    }
-
-    fn connect(&mut self) -> Result<(), ws::Error> {
-        let domain = format!("wss://{}", self.domain);
+        user: User
+        ) {
         let uuid = Uuid::new_v4();
-        let connect_request = ConnectRequest::new(&uuid);
-        let mut password = self.user.password.clone();
+        ws::connect(domain, |out| {
+            RocketBot {
+                out,
+                uuid,
+                user: user.clone(),
+                handler: Box::new(DefaultRocketHandler{})
+            }
+        }).unwrap();
+    }
+
+    fn connect(&mut self) {
+        info!("Connecting");
+        let connect_request = ConnectRequest::new(&self.uuid);
+        let _connect_sent = self.out.send(
+            serde_json::to_string::<ConnectRequest>(&connect_request).unwrap());
+    }
+
+    fn login(&mut self) -> ws::Result<()> {
+        info!("Logging in");
         let hashed_password = {
             let mut hasher = Sha256::new();
+            let mut password = self.user.password.clone();
             hasher.input_str(password.as_mut_str());
             hasher.result_str()
         };
@@ -62,7 +82,7 @@ impl<H: MessageHandler> RocketBot<H> {
         let login_request = LoginRequest {
             msg: "method".to_string(),
             method: "login".to_string(),
-            id: uuid,
+            id: self.uuid,
             params: vec!(
                 RequestParams::User {
                     user: RequestUser {
@@ -76,54 +96,58 @@ impl<H: MessageHandler> RocketBot<H> {
             )
         };
 
-        ws::connect(domain, |out| {
-            let connect_sent = out.send(
-                serde_json::to_string::<ConnectRequest>(&connect_request).unwrap());
-            match connect_sent.is_err() {
-                false => info!("Client sent connect message."),
-                true => error!("CONNECT IS ERROR"),
-            }
-            let login_sent = out.send(serde_json::to_string::<LoginRequest>(&login_request).unwrap());
-            match login_sent.is_err() {
-                false=> info!("Client sent login message."),
-                true => error!("LOGIN IS ERROR"),
-            }
-            move |msg: ws::Message| {
-                info!("Incoming message: {}", msg);
-                /*
-                let msg2 = msg.into_text().unwrap();
-                let msg_obj : ResponseFormat = serde_json::from_str(&msg2).unwrap();
-                match msg_obj.msg {
-                    Some(m) => {
-                        &out.send(self.handle_message(m));
-                        ()
-                    },
-                    None => (),
-                }
-                */
-                Ok(())
-            }
-        })
+        self.send(serde_json::to_string::<LoginRequest>(&login_request).unwrap())
     }
 
-    fn handle_message(&self, message: String) -> String {
-        match message.as_str() {
-            "ping" => {
-                serde_json::to_string::<Pong>(&Pong::new()).unwrap()
-            },
-            _ => {
-                "".to_string()
-            }
-        }
+    fn pong(&mut self) -> ws::Result<()> {
+        let message = serde_json::to_string::<Pong>(&Pong::new()).unwrap();
+        self.send(message)
     }
 
-    fn get_hash(string: &mut str) -> String {
-        let mut hasher = Sha256::new();
-        hasher.input_str(string);
-        return hasher.result_str();
+    fn send(&mut self, message: String) -> ws::Result<()> {
+        info!("Sending: {}", message);
+        self.out.send(message)
     }
 }
 
+impl Handler for RocketBot {
+
+    fn on_open(&mut self, _: Handshake) -> ws::Result<()> {
+        info!("Connection open");
+        self.connect();
+        Ok(())
+    }
+
+    fn on_message(&mut self, msg: Message) -> ws::Result<()> {
+        let msg2 = msg.into_text().unwrap();
+        let msg_obj : ResponseFormat = serde_json::from_str(&msg2).unwrap();
+        match msg_obj.msg {
+            Some(m) => {
+                match m.as_str() {
+                    "connected" => { self.login()?; },
+                    "ping" => { self.pong()?; },
+                    _ => { info!("UNHANDLED MESSAGE: '{}'", &msg2); },
+                }
+            }
+            None => {}
+        }
+        Ok(())
+    }
+
+    fn on_close(&mut self, code: CloseCode, reason: &str) {
+        info!("WebSocket closing for ({:?}) {}", code, reason);
+        info!("Shutting down");
+        self.out.shutdown().unwrap();
+    }
+
+    fn on_error(&mut self, err: Error) {
+        error!("Shutting down server due to error: {}", err);
+        self.out.shutdown().unwrap();
+    }
+
+}
+
+// TODO make tests
 #[cfg(test)]
 mod tests {
     #[test]
