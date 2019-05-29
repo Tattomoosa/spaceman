@@ -14,7 +14,7 @@ use rocket_bot::{
 //use env_logger;
 
 
-const DOMAIN: &str = "wss://rocket.cat.pdx.edu/websocket";
+const DOMAIN: &str = "rocket.cat.pdx.edu";
 // const DOMAIN: &str = "echo.websocket.org";
 const USERNAME: &str = "rustbot";
 const PASSWORD: &str = "zVd/HkU9djMBhloZCwaXf4PveNyP56";
@@ -35,17 +35,6 @@ fn main() -> Result<(), ()> {
         String::from(USERNAME),
         String::from(PASSWORD)
     );
-    /*
-    let mut rocket_bot = RocketBot::new(
-        String::from(DOMAIN),
-        user,
-        hello_bot
-    );
-    match rocket_bot.run() {
-        _ => {}
-    }
-    */
     RocketBot::run(DOMAIN.to_string(), user);
-
     Ok(())
 }
