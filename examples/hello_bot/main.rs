@@ -16,8 +16,8 @@ use rocket_bot::{
 
 const DOMAIN: &str = "rocket.cat.pdx.edu";
 // const DOMAIN: &str = "echo.websocket.org";
-const USERNAME: &str = "rustbot";
-const PASSWORD: &str = "zVd/HkU9djMBhloZCwaXf4PveNyP56";
+const USERNAME: &str = "";
+const PASSWORD: &str = "";
 
 struct HelloHandler {}
 
