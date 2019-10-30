@@ -177,7 +177,7 @@ impl RocketBot {
     }
 
     fn on_login(&mut self) {
-        self.subscribe_to_self_events();
+        // self.subscribe_to_self_events();
     }
 
     fn subscribe_to_self_events(&mut self) {
@@ -219,7 +219,10 @@ impl Handler for RocketBot {
         match message {
             "connected" => { self.login()?; },
             "ping" => { self.pong()?; },
-            "result" => { self.handle_result(response)?; },
+            "result" => {
+                info!("RESULT: '{}'", &msg_txt);
+                self.handle_result(response)?;
+            },
             _ => { info!("UNHANDLED MESSAGE: '{}'", &msg_txt); },
         }
         Ok(())
