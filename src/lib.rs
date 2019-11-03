@@ -40,14 +40,14 @@ const X_AUTH_TOKEN: &str = "X-Auth-Token";
 const X_USER_ID: &str = "X-User-Id";
 
 pub trait RocketMessageHandler {
-    fn on_message(&mut self);
+    fn on_message(&mut self, msg: String);
 }
 
 pub struct DefaultRocketHandler {}
 
 impl RocketMessageHandler for DefaultRocketHandler {
-    fn on_message(&mut self) {
-        info!("here");
+    fn on_message(&mut self, msg: String) {
+        info!("MESSAGE: {}", msg);
     }
 }
 
@@ -96,9 +96,9 @@ where T: RocketMessageHandler {
         info!("Connecting");
         // TODO should this use same uuid as login??
         let connect_request = ConnectRequest::new();
-        let _connect_sent = self.out.send(
-            serde_json::to_string::<ConnectRequest>(&connect_request).unwrap());
-        // TODO deal with this, it always returns ok anyway rn
+        let connect_str = serde_json::to_string::<ConnectRequest>(
+            &connect_request).unwrap();
+        let _connect_sent = self.out.send(connect_str);
     }
 
     fn login(&mut self) -> ws::Result<()> {
@@ -159,12 +159,12 @@ where T: RocketMessageHandler {
                 }
             }
         }
-        self.handler.on_message();
+        self.handler.on_message(String::from("HELLO"));
         Ok(())
     }
 
     fn on_login(&mut self) {
-        // self.subscribe_to_self_events();
+        self.subscribe_to_self_events();
         self.get_subscriptions();
     }
 
@@ -184,8 +184,7 @@ where T: RocketMessageHandler {
         if !self.is_logged_in {
             return;
         }
-        // let id = Uuid::new_v4();
-        info!("Subscribing to self events...");
+        info!("Subscribing to events...");
         let event = Parameter::STRING(String::from("event"));
         let b = Parameter::BOOL(false);
         let params = vec!(event, b);

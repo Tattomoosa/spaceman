@@ -23,8 +23,8 @@ use rocket_bot::{
 
 struct HelloHandler {}
 impl RocketMessageHandler for HelloHandler {
-    fn on_message(&mut self) {
-        println!("CUSTOM HANDLING!")
+    fn on_message(&mut self, msg: String) {
+        println!("CUSTOM HANDLING! {}", msg)
     }
 }
 
@@ -34,7 +34,6 @@ fn main() -> Result<(), ()> {
     let username = dotenv::var("BOTNAME").unwrap();
     let password = dotenv::var("PASSWORD").unwrap();
     let domain = dotenv::var("DOMAIN").unwrap();
-    println!("{}, {}, {}", username, password, domain);
     let user = User::new(username, password);
     RocketBot::start(&domain, user, move || { HelloHandler {} });
     Ok(())
