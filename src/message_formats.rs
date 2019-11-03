@@ -29,6 +29,16 @@ pub struct User {
 }
 
 // REQUEST FORMATS {{{
+
+// Generic
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Request {
+    pub msg: String,
+    pub method: String,
+    pub id: String,
+    pub params: Vec<RequestParams>
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoginRequest {
     pub msg: String,
@@ -133,7 +143,7 @@ pub struct Response {
     #[serde(rename = "errorType")]
     pub error_type: Option<String>,
     #[serde(default)]
-    pub result: Option<Result>,
+    pub result: Option<RcResult>,
     // Can't be UUID so making it a string,
     // need to figure out how to make it a uuid later
     // TODO change back to string? not working
@@ -150,7 +160,14 @@ pub enum ResponseID {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Result {
+#[serde(untagged)]
+pub enum RcResult {
+    List(Vec<Parameter>),
+    LoginResult(LoginResult),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct LoginResult {
     #[serde(default)]
     pub id: Option<String>,
     #[serde(default)]
@@ -198,11 +215,47 @@ pub struct UserInfo {
     password: Password,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 pub enum Parameter {
     STRING(String),
     BOOL(bool),
+    DATE(Date),
+    // TODO figure out name
+    SUB_RESPONSE {
+        #[serde(rename = _id)]
+        id: String,
+        #[serde(rename = rid)]
+        response_id: String,
+        #[serde(rename = u)]
+        user: UserParam,
+        #[serde(rename = _updatedAt)]
+        updated_at: Date,
+        alert: bool,
+        fname: String,
+        #[serde(rename = groupMentions)]
+        group_mentions: i32,
+        name: String,
+        open: bool,
+        t: String,
+        ts: Date,
+        unread: i32,
+        #[serde(rename = userMentions)]
+        user_mentions: i32,
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UserParam {
+    #[serde(rename = _id)]
+    id: String,
+    username: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Date {
+    #[serde(rename = "$date")]
+    date: i64,
 }
 
 // vim: foldmethod=marker

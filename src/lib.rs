@@ -40,13 +40,13 @@ const X_AUTH_TOKEN: &str = "X-Auth-Token";
 const X_USER_ID: &str = "X-User-Id";
 
 pub trait RocketMessageHandler {
-    fn on_message(self);
+    fn on_message(&mut self);
 }
 
 pub struct DefaultRocketHandler {}
 
 impl RocketMessageHandler for DefaultRocketHandler {
-    fn on_message(self) {
+    fn on_message(&mut self) {
         info!("here");
     }
 }
@@ -150,6 +150,7 @@ where T: RocketMessageHandler {
     fn handle_result(&mut self, response: Response) -> ws::Result<()> {
         // TODO deal with no result result response? Can that happen?
         // login!
+        info!("HANDLING RESULT..");
         let result = match response.result {
             Some(result) => result,
             None => {
@@ -157,48 +158,61 @@ where T: RocketMessageHandler {
                 return Ok(());
             },
         };
-        match response.id.clone() {
-            Some(id) => {
-                match id {
-                    ResponseID::Uuid(id) => {
-                        info!("ID IS UUID");
-                        if id == self.login_id {
-                            info!("Logged in!");
-                            self.user_id = result.id;
-                            self.user_token = result.token;
-                            self.is_logged_in = true;
-                            self.on_login();
+        match result {
+            RcResult::List(_result) => {
+                info!("RESULT IS A LIST");
+            },
+            RcResult::LoginResult(result) => {
+                info!("RESULT IS A LOGIN RESULT");
+                match response.id.clone() {
+                    Some(id) => {
+                        match id {
+                            ResponseID::Uuid(id) => {
+                                info!("ID IS UUID");
+                                if id == self.login_id {
+                                    info!("Logged in!");
+                                    self.user_id = result.id;
+                                    self.user_token = result.token;
+                                    self.is_logged_in = true;
+                                    self.on_login();
+                                }
+                            }
+                            ResponseID::String(_string) => info!("ID IS String"),
                         }
                     }
-                    ResponseID::String(_string) => info!("ID IS String"),
+                    None => {
+                        info!("NO ID");
+                    }
                 }
             }
-            None => {
-                info!("NO ID");
-            }
         }
-        // self.handler.on_message();
+        self.handler.on_message();
         Ok(())
     }
 
     fn on_login(&mut self) {
-        self.subscribe_to_self_events();
+        // self.subscribe_to_self_events();
+        self.get_subscriptions();
     }
 
+    fn get_subscriptions(&mut self) {
+        let request = Request {
+            msg: String::from("method"),
+            method: String::from("subscriptions/get"),
+            id: self.user_id.as_ref().unwrap().clone(),
+            params: vec![],
+        };
+        let request_string = serde_json::to_string(&request).unwrap();
+        let _subscribed = self.send(request_string);
+    }
+
+    // Not sure this does what I expected it to.
     fn subscribe_to_self_events(&mut self) {
         if !self.is_logged_in {
             return;
         }
         // let id = Uuid::new_v4();
         info!("Subscribing to self events...");
-        // TODO what is self._user_event_key in the python???
-        // let user_event_key = format!("{}/rooms-changed", self.user_id.clone().unwrap());
-        // let user_event_key = format!("{}/rooms-changed", self.user_id.clone().unwrap());
-        // TODO OK so somehow i need params to be an array with both a string
-        // (user_event_key) and a bool... hm
-        // let params = vec!(user_event_key, "false".to_string());
-        // TODO gets an error message i can't unwrap...
-        // let params = vec!("event".to_string(), "false".to_string());
         let event = Parameter::STRING(String::from("event"));
         let b = Parameter::BOOL(false);
         let params = vec!(event, b);
@@ -220,20 +234,25 @@ where T: RocketMessageHandler {
     fn on_message(&mut self, msg: Message) -> ws::Result<()> {
         let msg_txt = msg.into_text().unwrap();
         info!("unwrapping {}", msg_txt);
-        let response : Response = serde_json::from_str(&msg_txt).unwrap();
-        let message = match &response.msg {
-            Some(m) => m.as_str(),
-            None => "",
-        };
-        // Main 'switch'
-        match message {
-            "connected" => { self.login()?; },
-            "ping" => { self.pong()?; },
-            "result" => {
-                info!("found result: '{}'", &msg_txt);
-                self.handle_result(response)?;
+        let response: serde_json::Result<Response> = serde_json::from_str(&msg_txt);
+        match response {
+            Ok(response) => {
+                let message = match &response.msg {
+                    Some(m) => m.as_str(),
+                    None => "",
+                };
+                // Main 'switch'
+                match message {
+                    "connected" => { self.login()?; },
+                    "ping" => { self.pong()?; },
+                    "result" => {
+                        info!("found result: '{}'", &msg_txt);
+                        self.handle_result(response)?;
+                    },
+                    _ => { error!("UNHANDLED MESSAGE: '{}'", &msg_txt); },
+                }
             },
-            _ => { error!("UNHANDLED MESSAGE: '{}'", &msg_txt); },
+            Err(error) => error!("PARSE ERROR {}", error)
         }
         Ok(())
     }
@@ -249,13 +268,4 @@ where T: RocketMessageHandler {
         self.out.shutdown().unwrap();
     }
 
-}
-
-// TODO make tests
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
 }

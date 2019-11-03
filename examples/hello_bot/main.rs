@@ -23,7 +23,7 @@ use rocket_bot::{
 
 struct HelloHandler {}
 impl RocketMessageHandler for HelloHandler {
-    fn on_message(self) {
+    fn on_message(&mut self) {
         println!("CUSTOM HANDLING!")
     }
 }
