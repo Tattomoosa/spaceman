@@ -68,11 +68,11 @@ pub struct SubscribeRequest {
     pub msg: String,
     pub id: Uuid,
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<Parameter>,
 }
 
 impl SubscribeRequest {
-    pub fn new(name: &str, params: Vec<String>) -> Self {
+    pub fn new(name: &str, params: Vec<Parameter>) -> Self {
         SubscribeRequest {
             msg: "sub".to_string(),
             id: Uuid::new_v4(),
@@ -107,9 +107,7 @@ pub struct Pong {
 
 impl Pong {
     pub fn new() -> Self {
-        Pong {
-            msg: "pong".to_string(),
-        }
+        Pong { msg: "pong".to_string() }
     }
 }
 // }}}
@@ -198,6 +196,13 @@ impl User {
 pub struct UserInfo {
     user: RequestUser,
     password: Password,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Parameter {
+    STRING(String),
+    BOOL(bool),
 }
 
 // vim: foldmethod=marker

@@ -1,3 +1,11 @@
+/*
+In order to run this example, you must first create a .env file in the
+root project folder (with Cargo.toml etc), something like:
+BOTNAME="mybot"
+PASSWORD="password"
+DOMAIN="rocket.my.domain.com"
+*/
+
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
@@ -5,36 +13,29 @@
 extern crate log;
 extern crate simple_logging;
 use log::LevelFilter;
+use dotenv;
 
 use rocket_bot::{
     RocketBot,
     User,
     RocketMessageHandler
 };
-//use env_logger;
-
-
-const DOMAIN: &str = "rocket.cat.pdx.edu";
-// const DOMAIN: &str = "echo.websocket.org";
-const USERNAME: &str = "";
-const PASSWORD: &str = "";
 
 struct HelloHandler {}
-
 impl RocketMessageHandler for HelloHandler {
     fn on_message(self) {
-        ();
+        println!("CUSTOM HANDLING!")
     }
 }
 
 
 fn main() -> Result<(), ()> {
     simple_logging::log_to_stderr(LevelFilter::Info);
-    let _hello_bot = HelloHandler {};
-    let user = User::new(
-        String::from(USERNAME),
-        String::from(PASSWORD)
-    );
-    RocketBot::run(DOMAIN.to_string(), user);
+    let username = dotenv::var("BOTNAME").unwrap();
+    let password = dotenv::var("PASSWORD").unwrap();
+    let domain = dotenv::var("DOMAIN").unwrap();
+    println!("{}, {}, {}", username, password, domain);
+    let user = User::new(username, password);
+    RocketBot::start(&domain, user, move || { HelloHandler {} });
     Ok(())
 }

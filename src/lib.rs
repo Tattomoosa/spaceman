@@ -35,7 +35,6 @@ use reqwest::{
 mod message_formats;
 use message_formats::*;
 pub use message_formats::User;
-// use serde_json;
 
 const X_AUTH_TOKEN: &str = "X-Auth-Token";
 const X_USER_ID: &str = "X-User-Id";
@@ -52,34 +51,40 @@ impl RocketMessageHandler for DefaultRocketHandler {
     }
 }
 
-pub struct RocketBot {
+pub struct RocketBot<T>
+where T: RocketMessageHandler {
     out: Sender,
     domain: String,
     login_id: Uuid,
     user: User,
     rest_client: reqwest::Client,
-    handler: Box<RocketMessageHandler>,
+    handler: T,
     user_token: Option<String>,
     user_id: Option<String>,
     is_logged_in: bool,
 }
 
-impl RocketBot {
+impl<T> RocketBot<T>
+where T: RocketMessageHandler {
 
-    pub fn run(
-        domain: String,
-        user: User
-        ) {
+    pub fn start<F>(
+        domain: &str,
+        user: User,
+        handler_factory: F
+    )
+    where F: Fn() -> T
+    {
         let login_id = Uuid::new_v4();
         let wss_url = format!("wss://{}/websocket", domain);
         ws::connect(wss_url, |out| {
+            let handler = handler_factory();
             RocketBot {
                 out,
                 login_id,
-                domain: domain.clone(),
+                domain: String::from(domain),
                 user: user.clone(),
                 rest_client: reqwest::Client::new(),
-                handler: Box::new(DefaultRocketHandler{}),
+                handler: handler,
                 user_token: None,
                 user_id: None,
                 is_logged_in: false,
@@ -154,30 +159,30 @@ impl RocketBot {
         };
         match response.id.clone() {
             Some(id) => {
-                // info!("RESPONSE HAS AN ID: {}", id);
                 match id {
                     ResponseID::Uuid(id) => {
                         info!("ID IS UUID");
                         if id == self.login_id {
                             info!("Logged in!");
-                            // TODO should these be strings?
                             self.user_id = result.id;
                             self.user_token = result.token;
                             self.is_logged_in = true;
                             self.on_login();
-                            // self.get_rest("/api/v1/channels.list").unwrap();
                         }
                     }
                     ResponseID::String(_string) => info!("ID IS String"),
                 }
             }
-            None => {}
+            None => {
+                info!("NO ID");
+            }
         }
+        // self.handler.on_message();
         Ok(())
     }
 
     fn on_login(&mut self) {
-        // self.subscribe_to_self_events();
+        self.subscribe_to_self_events();
     }
 
     fn subscribe_to_self_events(&mut self) {
@@ -185,21 +190,26 @@ impl RocketBot {
             return;
         }
         // let id = Uuid::new_v4();
-        info!("Subscribing to self events.");
+        info!("Subscribing to self events...");
         // TODO what is self._user_event_key in the python???
-        let user_event_key = format!("{}/rooms-changed", self.user_id.clone().unwrap());
+        // let user_event_key = format!("{}/rooms-changed", self.user_id.clone().unwrap());
+        // let user_event_key = format!("{}/rooms-changed", self.user_id.clone().unwrap());
         // TODO OK so somehow i need params to be an array with both a string
         // (user_event_key) and a bool... hm
-        let params = vec!(user_event_key, "false".to_string());
+        // let params = vec!(user_event_key, "false".to_string());
         // TODO gets an error message i can't unwrap...
-        let subscribe_request = SubscribeRequest::new("stream-notify-user", params);
-        let _subscribe_sent = self.send(
-            serde_json::to_string::<SubscribeRequest>(&subscribe_request).unwrap());
-
+        // let params = vec!("event".to_string(), "false".to_string());
+        let event = Parameter::STRING(String::from("event"));
+        let b = Parameter::BOOL(false);
+        let params = vec!(event, b);
+        let subscribe_request = SubscribeRequest::new("stream-notify-all", params);
+        let subscribe_string = serde_json::to_string::<SubscribeRequest>(&subscribe_request).unwrap();
+        let _subscribed = self.send(subscribe_string);
     }
 }
 
-impl Handler for RocketBot {
+impl<T> Handler for RocketBot<T>
+where T: RocketMessageHandler {
 
     fn on_open(&mut self, _: Handshake) -> ws::Result<()> {
         info!("Connection open");
@@ -209,7 +219,7 @@ impl Handler for RocketBot {
 
     fn on_message(&mut self, msg: Message) -> ws::Result<()> {
         let msg_txt = msg.into_text().unwrap();
-        info!("UNWRAPPING {}", msg_txt);
+        info!("unwrapping {}", msg_txt);
         let response : Response = serde_json::from_str(&msg_txt).unwrap();
         let message = match &response.msg {
             Some(m) => m.as_str(),
@@ -220,10 +230,10 @@ impl Handler for RocketBot {
             "connected" => { self.login()?; },
             "ping" => { self.pong()?; },
             "result" => {
-                info!("RESULT: '{}'", &msg_txt);
+                info!("found result: '{}'", &msg_txt);
                 self.handle_result(response)?;
             },
-            _ => { info!("UNHANDLED MESSAGE: '{}'", &msg_txt); },
+            _ => { error!("UNHANDLED MESSAGE: '{}'", &msg_txt); },
         }
         Ok(())
     }

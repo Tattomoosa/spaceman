@@ -16,3 +16,6 @@ simple-logging = "*"
 openssl = "*"
 reqwest = "*"
 http = "*"
+
+[dev-dependencies]
+dotenv = "*"
