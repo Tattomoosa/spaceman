@@ -120,33 +120,6 @@ where T: RocketMessageHandler {
         self.out.send(message)
     }
 
-    // TODO deal with errors
-    fn get_rest(&mut self, method: &str) -> ws::Result<()> {
-        let api_endpoint = format!("https://{}{}", self.domain, method);
-        let response = self.rest_client.get(api_endpoint.as_str())
-            // TODO HEADERS AGH
-            /*
-            .header(
-                HeaderName::from_static(X_AUTH_TOKEN),
-                http::header(
-                    &self.user_token.unwrap().as_str().clone()))
-            .header(
-                HeaderName::from_static(X_USER_ID),
-                http::header(
-                    &self.user_id.unwrap().as_str().clone()))
-                // http::convert::HttpTryFrom(&self.user_id.unwrap())
-                // &self.user_id.unwrap().clone()
-                // )
-                */
-            .send();
-        info!("Sending rest request to: {}", api_endpoint);
-        match response {
-            Ok(r) => info!("REST response is:\n{:?}", r),
-            Err(r) => error!("ERROR:\n{:?}", r)
-        };
-        Ok(())
-    }
-
     fn handle_result(&mut self, response: Response) -> ws::Result<()> {
         // TODO deal with no result result response? Can that happen?
         // login!

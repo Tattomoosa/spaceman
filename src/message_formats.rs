@@ -234,14 +234,14 @@ pub enum Parameter {
         alert: bool,
         fname: String,
         #[serde(rename = groupMentions)]
-        group_mentions: i32,
+        group_mentions: i64,
         name: String,
         open: bool,
         t: String,
         ts: Date,
-        unread: i32,
+        unread: i64,
         #[serde(rename = userMentions)]
-        user_mentions: i32,
+        user_mentions: i64,
     }
 }
 
